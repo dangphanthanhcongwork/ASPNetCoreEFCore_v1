@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WebAppication.DTOs;
 using WebAppication.Models;
 
 public class ApplicationDbContext : DbContext

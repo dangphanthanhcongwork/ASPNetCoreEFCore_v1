@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebAppication.DTOs;
 using WebAppication.Models;
 
 namespace WebApplication.Controllers
@@ -22,43 +23,43 @@ namespace WebApplication.Controllers
 
         // GET: api/Projects
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Project>>> GetProjects()
+        public async Task<ActionResult<IEnumerable<ProjectDTO>>> GetProjects()
         {
             return await _context.Projects
-                .Include(p => p.ProjectEmployees)
-                    .ThenInclude(pe => pe.Employee)
+                .Select(p => new ProjectDTO { Name = p.Name }) // Map Project to ProjectDTO
                 .ToListAsync();
         }
 
         // GET: api/Projects/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Project>> GetProject(Guid id)
+        public async Task<ActionResult<ProjectDTO>> GetProject(Guid id)
         {
-            var project = await _context.Projects
-                .Include(p => p.ProjectEmployees)
-                    .ThenInclude(pe => pe.Employee)
-                .FirstOrDefaultAsync(p => p.Id == id);
+            var project = await _context.Projects.FindAsync(id);
 
             if (project == null)
             {
                 return NotFound();
             }
 
-            return project;
+            var projectDto = new ProjectDTO { Name = project.Name }; // Map Project to ProjectDTO
+
+            return projectDto;
         }
 
         // PUT: api/Projects/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProject(Guid id, Project project)
+        public async Task<IActionResult> PutProject(Guid id, ProjectDTO projectDto)
         {
-            if (id != project.Id)
+            var project = await _context.Projects.FindAsync(id);
+            if (project == null)
             {
-                return BadRequest();
+                return NotFound();
             }
 
+            project.Name = projectDto.Name; // Map ProjectDTO to Project
+
             _context.Entry(project).State = EntityState.Modified;
-            _context.Entry(project).Collection(p => p.ProjectEmployees).Query().Include(pe => pe.Employee).Load();
 
             try
             {
@@ -82,24 +83,21 @@ namespace WebApplication.Controllers
         // POST: api/Projects
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Project>> PostProject(Project project)
+        public async Task<ActionResult<ProjectDTO>> PostProject(ProjectDTO projectDto)
         {
+            var project = new Project { Name = projectDto.Name }; // Map ProjectDTO to Project
+
             _context.Projects.Add(project);
             await _context.SaveChangesAsync();
 
-            _context.Entry(project).Collection(p => p.ProjectEmployees).Query().Include(pe => pe.Employee).Load();
-
-            return CreatedAtAction("GetProject", new { id = project.Id }, project);
+            return CreatedAtAction("GetProject", new { id = project.Id }, new ProjectDTO { Name = project.Name }); // Return ProjectDTO
         }
 
         // DELETE: api/Projects/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(Guid id)
         {
-            var project = await _context.Projects
-                .Include(p => p.ProjectEmployees)
-                    .ThenInclude(pe => pe.Employee)
-                .FirstOrDefaultAsync(p => p.Id == id);
+            var project = await _context.Projects.FindAsync(id);
             if (project == null)
             {
                 return NotFound();
