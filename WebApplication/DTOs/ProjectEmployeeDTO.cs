@@ -3,10 +3,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace WebApplication.DTOs
 {
-    public class SalaryDTO
+    public class ProjectEmployeeDTO
     {
+        public Guid ProjectId { get; set; }
+
         public Guid EmployeeId { get; set; }
 
-        public decimal SalaryAmount { get; set; }
+        public bool Enable { get; set; }
     }
 }

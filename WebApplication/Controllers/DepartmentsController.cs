@@ -1,117 +1,82 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using WebAppication.DTOs;
-using WebAppication.Models;
+using WebApplication.Models;
+using WebApplication.DTOs;
+using WebApplication.Services;
 
 namespace WebApplication.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/departments")]
     [ApiController]
     public class DepartmentsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDepartmentService _service;
 
-        public DepartmentsController(ApplicationDbContext context)
+        public DepartmentsController(IDepartmentService service)
         {
-            _context = context;
+            _service = service;
         }
 
-        // GET: api/Departments
+        // GET: api/departments
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<DepartmentDTO>>> GetDepartments()
+        public async Task<IActionResult> GetDepartments()
         {
-            return await _context.Departments
-                .Select(d => new DepartmentDTO { Name = d.Name }) // Map Department to DepartmentDTO
-                .ToListAsync();
+            var departments = await _service.GetDepartments();
+            return Ok(departments);
         }
 
-        // GET: api/Departments/5
+        // GET: api/departments/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<DepartmentDTO>> GetDepartment(Guid id)
+        public async Task<IActionResult> GetDepartment(Guid id)
         {
-            var department = await _context.Departments.FindAsync(id);
-
-            if (department == null)
-            {
-                return NotFound();
-            }
-
-            var departmentDto = new DepartmentDTO { Name = department.Name }; // Map Department to DepartmentDTO
-
-            return departmentDto;
-        }
-
-        // PUT: api/Departments/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutDepartment(Guid id, DepartmentDTO departmentDto)
-        {
-            var department = await _context.Departments.FindAsync(id);
-            if (department == null)
-            {
-                return NotFound();
-            }
-
-            department.Name = departmentDto.Name; // Map DepartmentDTO to Department
-
-            _context.Entry(department).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
+                var department = await _service.GetDepartment(id);
+                return Ok(department);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (Exception ex)
             {
-                if (!DepartmentExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound(ex.Message);
             }
-
-            return NoContent();
         }
 
-        // POST: api/Departments
+        // PUT: api/departments/{id}
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutDepartment(Guid id, DepartmentDTO departmentDTO)
+        {
+            try
+            {
+                await _service.PutDepartment(id, departmentDTO);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
+        }
+
+        // POST: api/departments
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<DepartmentDTO>> PostDepartment(DepartmentDTO departmentDto)
+        public async Task<IActionResult> PostDepartment(DepartmentDTO departmentDTO)
         {
-            var department = new Department { Name = departmentDto.Name }; // Map DepartmentDTO to Department
-
-            _context.Departments.Add(department);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetDepartment", new { id = department.Id }, new DepartmentDTO { Name = department.Name }); // Return DepartmentDTO
+            await _service.PostDepartment(departmentDTO);
+            return CreatedAtAction(nameof(GetDepartment), new { id = Guid.NewGuid() }, departmentDTO);
         }
 
-        // DELETE: api/Departments/5
+        // DELETE: api/departments/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteDepartment(Guid id)
         {
-            var department = await _context.Departments.FindAsync(id);
-            if (department == null)
+            try
             {
-                return NotFound();
+                await _service.DeleteDepartment(id);
+                return NoContent();
             }
-
-            _context.Departments.Remove(department);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool DepartmentExists(Guid id)
-        {
-            return _context.Departments.Any(e => e.Id == id);
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
     }
 }

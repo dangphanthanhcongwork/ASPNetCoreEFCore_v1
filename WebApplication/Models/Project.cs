@@ -1,13 +1,16 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace WebAppication.Models
+namespace WebApplication.Models
 {
     public class Project
     {
         public Guid Id { get; set; }
+
         [Required]
         [MaxLength(50)]
-        public required string Name { get; set; }
+        public string Name { get; set; }
+
         public ICollection<ProjectEmployee> ProjectEmployees { get; set; }
     }
 }

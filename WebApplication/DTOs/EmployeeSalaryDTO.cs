@@ -1,4 +1,4 @@
-namespace WebAppication.DTOs
+namespace WebApplication.DTOs
 {
     public class EmployeeSalaryDTO
     {
@@ -6,5 +6,4 @@ namespace WebAppication.DTOs
         public DateTime JoinedDate { get; set; }
         public decimal SalaryAmount { get; set; }
     }
-
 }

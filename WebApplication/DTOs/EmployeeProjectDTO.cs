@@ -1,9 +1,8 @@
-namespace WebAppication.DTOs
+namespace WebApplication.DTOs
 {
     public class EmployeeProjectDTO
     {
         public string EmployeeName { get; set; }
-        public IEnumerable<ProjectDTO> Projects { get; set; }
+        public List<string> ProjectNames { get; set; }
     }
-
 }

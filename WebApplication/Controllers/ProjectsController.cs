@@ -1,117 +1,82 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using WebAppication.DTOs;
-using WebAppication.Models;
+using WebApplication.Models;
+using WebApplication.DTOs;
+using WebApplication.Services;
 
 namespace WebApplication.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/projects")]
     [ApiController]
     public class ProjectsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IProjectService _service;
 
-        public ProjectsController(ApplicationDbContext context)
+        public ProjectsController(IProjectService service)
         {
-            _context = context;
+            _service = service;
         }
 
-        // GET: api/Projects
+        // GET: api/projects
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ProjectDTO>>> GetProjects()
+        public async Task<IActionResult> GetProjects()
         {
-            return await _context.Projects
-                .Select(p => new ProjectDTO { Name = p.Name }) // Map Project to ProjectDTO
-                .ToListAsync();
+            var projects = await _service.GetProjects();
+            return Ok(projects);
         }
 
-        // GET: api/Projects/5
+        // GET: api/projects/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<ProjectDTO>> GetProject(Guid id)
+        public async Task<IActionResult> GetProject(Guid id)
         {
-            var project = await _context.Projects.FindAsync(id);
-
-            if (project == null)
-            {
-                return NotFound();
-            }
-
-            var projectDto = new ProjectDTO { Name = project.Name }; // Map Project to ProjectDTO
-
-            return projectDto;
-        }
-
-        // PUT: api/Projects/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutProject(Guid id, ProjectDTO projectDto)
-        {
-            var project = await _context.Projects.FindAsync(id);
-            if (project == null)
-            {
-                return NotFound();
-            }
-
-            project.Name = projectDto.Name; // Map ProjectDTO to Project
-
-            _context.Entry(project).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
+                var project = await _service.GetProject(id);
+                return Ok(project);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (Exception ex)
             {
-                if (!ProjectExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound(ex.Message);
             }
-
-            return NoContent();
         }
 
-        // POST: api/Projects
+        // PUT: api/projects/{id}
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutProject(Guid id, ProjectDTO projectDTO)
+        {
+            try
+            {
+                await _service.PutProject(id, projectDTO);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
+        }
+
+        // POST: api/projects
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<ProjectDTO>> PostProject(ProjectDTO projectDto)
+        public async Task<IActionResult> PostProject(ProjectDTO projectDTO)
         {
-            var project = new Project { Name = projectDto.Name }; // Map ProjectDTO to Project
-
-            _context.Projects.Add(project);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetProject", new { id = project.Id }, new ProjectDTO { Name = project.Name }); // Return ProjectDTO
+            await _service.PostProject(projectDTO);
+            return CreatedAtAction(nameof(GetProject), new { id = Guid.NewGuid() }, projectDTO);
         }
 
-        // DELETE: api/Projects/5
+        // DELETE: api/projects/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProject(Guid id)
         {
-            var project = await _context.Projects.FindAsync(id);
-            if (project == null)
+            try
             {
-                return NotFound();
+                await _service.DeleteProject(id);
+                return NoContent();
             }
-
-            _context.Projects.Remove(project);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool ProjectExists(Guid id)
-        {
-            return _context.Projects.Any(e => e.Id == id);
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
     }
 }

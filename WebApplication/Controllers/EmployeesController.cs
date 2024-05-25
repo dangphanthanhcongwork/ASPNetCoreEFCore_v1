@@ -1,164 +1,107 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using WebAppication.DTOs;
-using WebAppication.Models;
+using WebApplication.Models;
+using WebApplication.DTOs;
+using WebApplication.Services;
 
 namespace WebApplication.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/employees")]
     [ApiController]
     public class EmployeesController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IEmployeeService _service;
 
-        public EmployeesController(ApplicationDbContext context)
+        public EmployeesController(IEmployeeService service)
         {
-            _context = context;
+            _service = service;
         }
 
-        // GET: api/Employees
+        // GET: api/employees
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<EmployeeDTO>>> GetEmployees()
+        public async Task<IActionResult> GetEmployees()
         {
-            return await _context.Employees
-                .Select(e => new EmployeeDTO { Name = e.Name }) // Map Employee to EmployeeDTO
-                .ToListAsync();
+            var employees = await _service.GetEmployees();
+            return Ok(employees);
         }
 
-        // GET: api/Employees/5
+        // GET: api/employees/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<EmployeeDTO>> GetEmployee(Guid id)
+        public async Task<IActionResult> GetEmployee(Guid id)
         {
-            var employee = await _context.Employees.FindAsync(id);
-
-            if (employee == null)
-            {
-                return NotFound();
-            }
-
-            var employeeDto = new EmployeeDTO { Name = employee.Name }; // Map Employee to EmployeeDTO
-
-            return employeeDto;
-        }
-
-        // PUT: api/Employees/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutEmployee(Guid id, EmployeeDTO employeeDto)
-        {
-            var employee = await _context.Employees.FindAsync(id);
-            if (employee == null)
-            {
-                return NotFound();
-            }
-
-            employee.Name = employeeDto.Name; // Map EmployeeDTO to Employee
-
-            _context.Entry(employee).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
+                var employee = await _service.GetEmployee(id);
+                return Ok(employee);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (Exception ex)
             {
-                if (!EmployeeExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound(ex.Message);
             }
-
-            return NoContent();
         }
 
-        // POST: api/Employees
+        // PUT: api/employees/{id}
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutEmployee(Guid id, EmployeeDTO employeeDTO)
+        {
+            try
+            {
+                await _service.PutEmployee(id, employeeDTO);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
+        }
+
+        // POST: api/employees
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<EmployeeDTO>> PostEmployee(EmployeeDTO employeeDto)
+        public async Task<IActionResult> PostEmployee(EmployeeDTO employeeDTO)
         {
-            var employee = new Employee { Name = employeeDto.Name }; // Map EmployeeDTO to Employee
-
-            _context.Employees.Add(employee);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetEmployee", new { id = employee.Id }, new EmployeeDTO { Name = employee.Name }); // Return EmployeeDTO
+            await _service.PostEmployee(employeeDTO);
+            return CreatedAtAction(nameof(GetEmployee), new { id = Guid.NewGuid() }, employeeDTO);
         }
 
-        // DELETE: api/Employees/5
+        // DELETE: api/employees/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEmployee(Guid id)
         {
-            var employee = await _context.Employees.FindAsync(id);
-            if (employee == null)
+            try
             {
-                return NotFound();
+                await _service.DeleteEmployee(id);
+                return NoContent();
             }
-
-            _context.Employees.Remove(employee);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
-        private bool EmployeeExists(Guid id)
-        {
-            return _context.Employees.Any(e => e.Id == id);
-        }
-
-        // GET: api/Employees/Department
+        // GET: api/employees-departments
         [HttpGet("employees-departments")]
-        public async Task<ActionResult<IEnumerable<EmployeeDepartmentDTO>>> GetEmployeesWithDepartment()
+        public async Task<ActionResult<IEnumerable<EmployeeDepartmentDTO>>> GetEmployeesWithDepartments()
         {
-            return await _context.Employees
-                .Include(e => e.Department)
-                .Select(e => new EmployeeDepartmentDTO
-                {
-                    EmployeeName = e.Name,
-                    DepartmentName = e.Department.Name
-                })
-                .ToListAsync();
+            var employees = await _service.GetEmployeesWithDepartments();
+            return Ok(employees);
         }
 
-        // GET: api/Employees/Projects
+        // GET: api/employees-projects
         [HttpGet("employees-projects")]
         public async Task<ActionResult<IEnumerable<EmployeeProjectDTO>>> GetEmployeesWithProjects()
         {
-            return await _context.Employees
-                .Include(e => e.ProjectEmployees)
-                    .ThenInclude(pe => pe.Project)
-                .Select(e => new EmployeeProjectDTO
-                {
-                    EmployeeName = e.Name,
-                    Projects = e.ProjectEmployees.Select(pe => new ProjectDTO { Name = pe.Project.Name }).ToList()
-                })
-                .ToListAsync();
+            var employees = await _service.GetEmployeesWithProjects();
+            return Ok(employees);
         }
 
-        // GET: api/Employees/SalaryAndDate
-        [HttpGet("employees-filtered")]
-        public async Task<ActionResult<IEnumerable<EmployeeSalaryDTO>>> GetEmployeesWithSalaryAndDate()
+        // GET: api/filter-employees-by-salary-and-joined-date
+        [HttpGet("filter-employees-by-salary-and-joined-date")]
+        public async Task<ActionResult<IEnumerable<EmployeeSalaryDTO>>> FilterEmployeesBySalaryAndJoinedDate()
         {
-            var date = new DateTime(2024, 1, 1);
-            return await _context.Employees
-                .Include(e => e.Salary)
-                .Where(e => e.Salary.SalaryAmount > 100 && e.JoinedDate >= date)
-                .Select(e => new EmployeeSalaryDTO
-                {
-                    EmployeeName = e.Name,
-                    JoinedDate = e.JoinedDate,
-                    SalaryAmount = e.Salary.SalaryAmount,
-                })
-                .ToListAsync();
+            var employees = await _service.FilterEmployeesBySalaryAndJoinedDate();
+            return Ok(employees);
         }
-
     }
 }
